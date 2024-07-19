@@ -20,26 +20,26 @@ def display_options():
     print("  ")
     print("Products list file has been loaded ")
     print("1. Display all product data")
-    print("2. Load and merge all products for specific job")
+    print("2. Load and see products that need power cables for specific job")
     print("3. Check cables for specific job")
     print("4. Exit")
     choice = input("Enter your choice (1-4): ")
     return choice
 
-def match_data(df_product, df_to_match, column_name):
-    """Match data from df_to_match against df_product."""
+def match_data(job_items, database, column_name):
+    """Match data from job_items against df_product."""
     
-    if column_name not in df_product.columns and column_name not in df_to_match.columns:
+    if column_name not in database.columns and column_name not in job_items.columns:
         print(f"Column '{column_name}' does not exist in one of the DataFrames.")
         return None
 
-    matched_df = pd.merge(df_to_match, df_product, on=column_name, how='left')
+    matched_df = pd.merge(job_items, database, on=column_name, how='left')
     return matched_df
    
-def get_product_with_power_from_job(df_product, df_to_match, column_name): 
+def get_product_with_power_from_job(job_items, database, column_name): 
     # Select relevant columns
-    relevant_columns = ['name', 'powerType', 'mainsPowerReq', 'Product Group', 'quantity']
-    matched_df = match_data(df_product, df_to_match, df_to_match)
+    relevant_columns = ['Id', 'name', 'powerType','prefPwrCbl', 'mainsPowerReq', 'Product Group', 'quantity']
+    matched_df = match_data(job_items, database, column_name)
     filtered_matched_df = matched_df[relevant_columns]
 
     # Filter for products requiring mains power
@@ -47,7 +47,9 @@ def get_product_with_power_from_job(df_product, df_to_match, column_name):
 
     return products_with_power
 
-def get_all_cables(df_product): 
+
+
+def get_all_cables(database): 
 
     cableGroup = ['Power Cable and Distribution - 13A', 
               'Power Cable and Distribution - 16A', 
@@ -63,70 +65,182 @@ def get_all_cables(df_product):
               ]
 
     # Filter out rows where 'product_group' is in cableGroup
-    all_cables = df_product[df_product['Product Group'].isin(cableGroup)]
-    all_cables = all_cables[['Id', 'name', 'Product Group']]
+    all_cables = database[database['Product Group'].isin(cableGroup)]
+
+    all_cables = all_cables[['Id', 'name', 'Product Group', 'connector1', 'connector2', 'cblLeng']]
+  
   
 
     return all_cables
 
-def get_cables_from_job(df_product, job_items, column_name):
+def get_cables_from_job(job_items, database, column_name):
 
-    all_cables = get_all_cables(df_product)
-    merged_df = match_data(df_product, job_items, column_name)
+    all_cables = get_all_cables(database)
+    merged_df = match_data(job_items, database, column_name)
 
     cables_from_job = merged_df[merged_df['Id'].isin(all_cables['Id'])]
-    cables_from_job  = cables_from_job[['Id', 'name', 'quantity']]
-    cables_from_job = cables_from_job.groupby('name').sum()
-    cables_from_job
+    cables_from_job  = cables_from_job[['Id', 'name', 'quantity', 'connector1' , 'connector2', 'cblLeng']]
+    cables_from_job = cables_from_job.groupby(['Id', 'name', 'connector1', 'connector2', 'cblLeng'])['quantity'].sum().reset_index().sort_values('cblLeng', ascending=False)
+
+    
+    print("\nCables in current job:")
+    print(cables_from_job)
 
     return cables_from_job
 
 
-
-def check_cables(df_product, df_to_match, column_name):
-    """
-    Match data from df_to_match against df_product based on a specific column.
-    Prints products requiring mains power and their power type counts.
-    
-    Parameters:
-    - df_product: DataFrame containing product information.
-    - df_to_match: DataFrame to match against df_product.
-    - column_name: The name of the column to match on.
-    
-    Returns:
-    - DataFrame of matched products requiring mains power.
-    """
-   
+def preffered_cable_counts(job_items, database,column_name ):
+    cables = get_all_cables(database)
 
     # Filter for products requiring mains power
-    products_with_power = match_data(df_product, df_to_match,column_name )
+    products_with_power = get_product_with_power_from_job(job_items, database,column_name )
+    
+     # Calculate and print power type counts
+    prefered_cable_counts = products_with_power.groupby('prefPwrCbl')['quantity'].sum().reset_index()
+   
+    # Merge prefered_cable_counts with cables on 'prefPwrCbl' and 'name' respectively
+    prefered_cable = pd.merge(prefered_cable_counts, cables, left_on='prefPwrCbl', right_on='Id', how='left')
+    
+      # Select desired columns and rename 'quantity_x' to 'quantity'
+    prefferred_cable = prefered_cable[['Id', 'name', 'connector1', 'connector2', 'cblLeng', 'quantity' ]].sort_values('cblLeng', ascending=False)
+    print("\nTypes of preffered cables needed in minimum  :")
+    print(prefferred_cable)
 
-    # Calculate and print power type counts
-    powerType_counts = products_with_power.groupby('powerType')['quantity'].sum().reset_index()
-    print("\nPower Type Counts needed:")
-    print(powerType_counts)
+    return prefferred_cable
 
-    cables_from_job = get_cables_from_job(df_product, df_to_match, column_name)
+def compare_cables(cables_from_job, preffered_cable):
+    compare_merged = pd.merge(cables_from_job, preffered_cable, on='Id', how='right', suffixes=('_job', '_prefferred'))
 
-    print("\nCables in current job:")
-    print(cables_from_job)
+    # Fill missing values in quantity columns with 0
+    compare_merged['quantity_job'] = compare_merged['quantity_job'].fillna(0)
+    compare_merged['quantity_prefferred'] = compare_merged['quantity_prefferred'].fillna(0)
 
-    return products_with_power
+    # Calculate the difference between job and preferred quantities
+    compare_merged['difference'] = compare_merged['quantity_job'] - compare_merged['quantity_prefferred']
+
+
+    # Categorize the differences
+    compare_merged['comparison'] = compare_merged['difference'].apply(lambda x: 'Less' if x < 0 else ('More' if x > 0 else 'Equal'))
+
+    return compare_merged
+
+def suggestions_for_cables(compare_merged):
+    # Suggest cables to add or remove
+    needed_preffered_cables = compare_merged[compare_merged['comparison'] == 'Less'].sort_values('cblLeng_prefferred', ascending=False)
+
+    needed_preffered_cables = compare_merged[compare_merged['comparison'].isin(['Less'])].sort_values('cblLeng_prefferred', ascending=False)
+    needed_preffered_cables = needed_preffered_cables.drop(['name_job', 'connector1_job', 'connector2_job', 'quantity_job', 'cblLeng_job'], axis=1)
+    needed_preffered_cables['difference'] = needed_preffered_cables['difference'].abs()
+
+    print("needed_preffered_cables   :")
+    for index, row in needed_preffered_cables.iterrows():
+        print(f"{int(row['difference'])} x {row['name_prefferred']}")
+    
+    
+
+    job_cables_to_sub = compare_merged[compare_merged['comparison'] == 'More'].sort_values('cblLeng_prefferred', ascending=False)
+    job_cables_to_sub = job_cables_to_sub.drop(['name_prefferred', 'connector1_prefferred', 'connector2_prefferred', 'quantity_prefferred', 'cblLeng_prefferred'], axis=1)
+
+    print("\Cables in job that has potential to substitude   :")
+    for index, row in job_cables_to_sub.iterrows():
+        print(f"{int(row['difference'])} x {row['name_job']}")
+    
+    
+
+    subtracted_items = []
+
+    # Process the preferred items to update the job items
+    total_subtracted = 0
+
+    for p_index, p_row in needed_preffered_cables.iterrows():
+        p_connector1 = p_row['connector1_prefferred']
+        p_connector2 = p_row['connector2_prefferred']
+        p_difference = p_row['difference']
+
+        for j_index, j_row in job_cables_to_sub.iterrows():
+            if p_connector1 == j_row['connector1_job'] and p_connector2 == j_row['connector2_job']:
+                j_difference = j_row['difference']
+                if j_difference >= p_difference:
+                    job_cables_to_sub.at[j_index, 'difference'] -= p_difference
+                    needed_preffered_cables.at[p_index, 'difference'] = 0
+                    subtracted_items.append((p_row['Id'], j_row['Id'], j_difference))
+                    total_subtracted += j_difference
+                    break
+                else:
+                    needed_preffered_cables.at[p_index, 'difference'] -= j_difference
+                    job_cables_to_sub.at[j_index, 'difference'] = 0
+                    subtracted_items.append((p_row['Id'], j_row['Id'], p_difference))
+                    total_subtracted += p_difference
+                    p_difference -= j_difference
+
+    # Remove zero entries from subtracted_items list
+    subtracted_items = [item for item in subtracted_items if item[2] > 0]
+
+    # Remaining items in job_cables_to_sub
+    remaining_job_items = job_cables_to_sub[job_cables_to_sub['difference'] > 0]
+
+    # Remaining items in needed_preffered_cables
+    remaining_preferred_items = needed_preffered_cables[needed_preffered_cables['difference'] > 0]
+
+    return remaining_job_items, remaining_preferred_items, subtracted_items
+
+def check_cables(job_items, database, column_name):
+   
+
+    cables_from_job = get_cables_from_job(job_items, database, column_name)
+    
+
+    preffered_cable = preffered_cable_counts(job_items, database,column_name )
+
+    compared_merged_cables = compare_cables(cables_from_job, preffered_cable)
+
+    if 'Less' in compared_merged_cables['comparison'].values:
+        remaining_job_items, remaining_preferred_items, subtracted_items = suggestions_for_cables(compared_merged_cables)
+        print ("  ")
+        print ("  ")
+        print(" ******                ********  ")
+
+        if remaining_job_items is not None:
+            for index, row in remaining_job_items.iterrows():
+                print("\nDetails of extra cables :") 
+                print(f"{int(row['difference'])} x {row['name_job']}")
+                print ("  ")
+                print ("  ")
+        if subtracted_items is not None:
+            for item in subtracted_items:
+                print("\nDetails of substitude cables:")
+                print(f" {int(item[2])} x Preferred cable with id number {item[0]} is substituded with {item[1]})")
+            else :
+                print("No substitude cables found")
+
+        if remaining_preferred_items is not None: 
+                for index, row in remaining_preferred_items.iterrows():
+
+                    print(f"{row['difference']} x {row['name_prefferred']} is needed to be added to the job.")
+
+
+    else:
+        print("  ")
+        print(" ******                ********  ")
+        print("  ")
+        print("The job has perfect match with minimum preffered cable!! Ready to go..")
+        print("  ")
+        print(" ******                ********  ")
+        print("  ")
+        return None  
 
 
 
 def main():
    
 
-    df_product = read_product_file("C:/Users/heinl/Desktop/csv_download/Current-Product-20240709-17597-vhy5tu.csv")
+    df_product = read_product_file("C:/Users/heinl/Desktop/csv_download/product_database.csv")
     df_product.rename(columns={'Name': 'name'}, inplace=True)
-    df_product = df_product[['Id', 'name', 'powerType', 'mainsPowerReq', 'Product Group']]
+    # df_product = df_product[['Id', 'name', 'powerType', 'mainsPowerReq', 'Product Group']]
 
 
     job_items = read_product_file("C:/Users/heinl/Desktop/csv_download/Wedding_Grove_House_Roehampton.csv")
     column_name_to_match = 'name'
-
-    
 
     if df_product is None:
         return
@@ -143,11 +257,12 @@ def main():
 
         elif choice == '2':            
             if job_items is not None:
-                product_with_power = match_data(df_product, job_items,column_name_to_match )
+                product_with_power = get_product_with_power_from_job(job_items, df_product,column_name_to_match )
                     # Print the filtered DataFrame
                 print("\n************************************")
                 print("************************************")
                 print("\nProducts requiring mains power:")
+
                 print(product_with_power)
                 print("\n************************************")
                 print("************************************")
@@ -155,7 +270,7 @@ def main():
             if job_items is not None:
                 print("\n************************************")
                 print("************************************")
-                check_cables(df_product, job_items,column_name_to_match )
+                check_cables(job_items, df_product,column_name_to_match )
                 print("\n************************************")
                 print("************************************")
                 
