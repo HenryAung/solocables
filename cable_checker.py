@@ -259,13 +259,13 @@ def update_database(local_db_path, remote_db_path):
 
 def main():
    
-    database_file_path = os.path.join(base_dir, './databases/product_database.csv')
+    database_file_path = os.path.join(base_dir, './databases/product_database1.csv')
 
     df_product = read_product_file(database_file_path)
     df_product.rename(columns={'Name': 'name'}, inplace=True)
   
-  
-    job_file_path = os.path.join(base_dir, './databases/Wedding_Grove_House_Roehampton.csv')
+    
+    job_file_path = os.path.join(base_dir, './databases/order.csv')
     job_items = read_product_file(job_file_path)
     column_name_to_match = 'name'
 

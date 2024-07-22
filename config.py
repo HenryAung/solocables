@@ -1,0 +1,6 @@
+CLIENT_ID = "L3n69Ob34uIRfgx1hC5zVJ2VlKQRnDdUgM8Ohvi--z8"
+CLIENT_SECRET   = "0eIg_RLnQqRccom5shq7YyIsJQdJ3NURcyNYIpGMShA"
+redirect_uri = "https://solosoundhire.co.uk"
+authorization_base_url = "https://heinlattaung7.current-rms.com/oauth2/authorize"
+access_token_url = "https://heinlattaung7.current-rms.com/oauth2/token"
+rms_subdomain = "heinlattaung7"
