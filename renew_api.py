@@ -1,8 +1,8 @@
 #this is an oath application for connecting to the curent-rms API
-import requests
+
 from requests_oauthlib import OAuth2Session
-import config
 import json
+import config
 
 client_id = config.CLIENT_ID
 client_secret = config.CLIENT_SECRET
@@ -11,7 +11,7 @@ redirect_uri = config.redirect_uri
 authorization_base_url = config.authorization_base_url
 
 
-def get_access_token(client_id, client_secret, access_token_url, redirect_uri, code):
+def get_access_token():
     #set up the oauth session
     oauth = OAuth2Session(client_id, redirect_uri=redirect_uri)
 
@@ -44,12 +44,4 @@ def get_access_token(client_id, client_secret, access_token_url, redirect_uri, c
     with open("refresh_token.txt", "w") as f:
         f.write(refresh_token)
 
-
-
-
-# #make a request to the API
-# response = oauth.get("https://api.current-rms.com/api/v1/products/200", headers=headers)
-
-# # print the response data
-# print(f"test response : {response.content}")
-
+# get_access_token()

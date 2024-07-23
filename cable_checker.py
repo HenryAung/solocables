@@ -1,6 +1,8 @@
 import pandas as pd
 import argparse
 import os
+from apiCall import fetch_all_products, get_job_items
+from renew_api import get_access_token
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -31,7 +33,7 @@ def display_options():
     return choice
 
 def match_data(job_items, database, column_name):
-    """Match data from job_items against df_product."""
+    """Match data from job_items against database."""
     
     if column_name not in database.columns and column_name not in job_items.columns:
         print(f"Column '{column_name}' does not exist in one of the DataFrames.")
@@ -43,7 +45,7 @@ def match_data(job_items, database, column_name):
 def get_product_with_power_from_job(job_items, database, column_name): 
     # Select relevant columns
     relevant_columns = ['Id', 'name', 'powerType','prefPwrCbl', 'mainsPowerReq', 'Product Group', 'quantity']
-    matched_df = match_data(job_items, database, column_name)
+    matched_df = pd.merge(job_items, database, on=column_name, how='left')
     filtered_matched_df = matched_df[relevant_columns]
 
     # Filter for products requiring mains power
@@ -258,18 +260,24 @@ def update_database(local_db_path, remote_db_path):
     local_db.to_csv(local_db_path, index=False)
 
 def main():
-   
-    database_file_path = os.path.join(base_dir, './databases/product_database1.csv')
 
-    df_product = read_product_file(database_file_path)
-    df_product.rename(columns={'Name': 'name'}, inplace=True)
-  
     
+   
+    database_file_path = os.path.join(base_dir, './databases/local_db_for_current_rms.csv')
+
+    database = read_product_file(database_file_path)
+    database.rename(columns={'Name': 'name', 'Description' : 'description'}, inplace=True)
+  
+    job_items_from_api = get_job_items(1) # 1 is the job id for the test job for api call
+
+
     job_file_path = os.path.join(base_dir, './databases/order.csv')
     job_items = read_product_file(job_file_path)
-    column_name_to_match = 'name'
 
-    if df_product is None:
+    ## this can be changed to 'Id' if needed to match with Id
+    column_name_to_match = 'name' 
+
+    if database is None:
         return
 
     while True:
@@ -277,14 +285,14 @@ def main():
         if choice == '1':
             print("\n************************************")
             print("************************************")
-            print(df_product)
+            print(database)
             print("\n************************************")
             print("************************************")
             
 
         elif choice == '2':            
             if job_items is not None:
-                product_with_power = get_product_with_power_from_job(job_items, df_product,column_name_to_match )
+                product_with_power = get_product_with_power_from_job(job_items, database,column_name_to_match )
                     # Print the filtered DataFrame
                 print("\n************************************")
                 print("************************************")
@@ -297,7 +305,7 @@ def main():
             if job_items is not None:
                 print("\n************************************")
                 print("************************************")
-                check_cables(job_items, df_product,column_name_to_match )
+                check_cables(job_items, database,column_name_to_match )
                 print("\n************************************")
                 print("************************************")
                 
@@ -314,10 +322,15 @@ def main():
                 print(" ")
                 print(" ")
                 print("Database updated successfully.")
-        
+
+       
         elif choice == '5' : 
             print("Exiting the application.")
             break
+
+        elif choice == '6':
+            get_access_token()
+        
         else:
             print("Invalid choice. Please enter a number between 1 and 4.")
 
