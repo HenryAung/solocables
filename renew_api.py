@@ -43,5 +43,3 @@ def get_access_token():
     #write the refresh token to a file
     with open("refresh_token.txt", "w") as f:
         f.write(refresh_token)
-
-# get_access_token()

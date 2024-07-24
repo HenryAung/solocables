@@ -24,6 +24,7 @@ def get_all_opportunities():
     oauth = start_oauth2_session.start_oauth_session(client_id, client_secret,  redirect_uri, access_token_url, headers)
     opportunities_url = "https://api.current-rms.com/api/v1/opportunities"
     response = oauth.get(opportunities_url, headers=headers)
+    print(response.json())
     return response.json()
 
 
@@ -71,10 +72,11 @@ def get_job_items(job_id):
 
 
     df = pd.json_normalize(product_items)
+    # print(df)
     df = df[['item_id', 'name', 'quantity', 'description']]
-    df.rename(columns={'item_id': 'Id'}, inplace=True)
-    print("Job Items")
-    print(df)
+    df.rename(columns={'item_id': 'Id', 'name': 'Name', 'description': 'Description'}, inplace=True)
+    # print("Job Items")
+    # print(df)
     return df
 
 
