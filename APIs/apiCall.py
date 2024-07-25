@@ -1,27 +1,17 @@
 from requests_oauthlib import OAuth2Session
-import config
-import start_oauth2_session
+import Scripts.auth.config as config
+import Scripts.auth.start_oauth2_session as start_oauth2_session
 import pandas as pd
 import json
+
 
 # Set pandas option to display all sequence items
 pd.set_option('display.max_seq_items', None)
 
-client_id = config.CLIENT_ID
-client_secret = config.CLIENT_SECRET
-access_token_url = config.access_token_url
-redirect_uri = config.redirect_uri
-authorization_base_url = config.authorization_base_url
 
 
-headers = {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-        "x-subdomain": config.rms_subdomain
-    }
-
-def get_all_opportunities():
-    oauth = start_oauth2_session.start_oauth_session(client_id, client_secret,  redirect_uri, access_token_url, headers)
+def get_all_opportunities(oauth, headers):
+    
     opportunities_url = "https://api.current-rms.com/api/v1/opportunities"
     response = oauth.get(opportunities_url, headers=headers)
     print(response.json())
@@ -29,8 +19,8 @@ def get_all_opportunities():
 
 
 
-def fetch_all_products():
-    oauth = start_oauth2_session.start_oauth_session(client_id, client_secret,  redirect_uri, access_token_url, headers)
+def fetch_all_products(oauth, headers):
+    
     base_url = "https://api.current-rms.com/api/v1/products"
     all_products = []
     page = 1
@@ -58,12 +48,17 @@ def fetch_all_products():
     return df
 
 
-def get_job_items(job_id):
-    oauth = start_oauth2_session.start_oauth_session(client_id, client_secret,  redirect_uri, access_token_url, headers)
+def get_job_items(job_id, oauth, headers):
+    
     opportunities_url = "https://api.current-rms.com/api/v1/opportunities"
     
-    response = oauth.get(opportunities_url+ '/' + str(job_id)  + '/' + 'opportunity_items', headers=headers)
+    response = oauth.get(opportunities_url+ '/' + str(job_id)  + '/' + 'opportunity_items' , headers=headers)
     
+
+    #write the access token to a text file
+    with open("opportunity_response.json", "w") as f:
+        f.write(json.dumps(response.json())) 
+    print(response)
     # Convert the response to a Python dictionary 
     opportunity_items = response.json()['opportunity_items']
 
@@ -79,13 +74,3 @@ def get_job_items(job_id):
     # print(df)
     return df
 
-
-
-
-def main():
-
-    # get_job_items(1)
-    pass
-
-if __name__ == "__main__":
-    main()
