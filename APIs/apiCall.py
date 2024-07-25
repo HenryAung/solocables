@@ -56,9 +56,9 @@ def get_job_items(job_id, oauth, headers):
     
 
     #write the access token to a text file
-    with open("opportunity_response.json", "w") as f:
-        f.write(json.dumps(response.json())) 
-    print(response)
+    # with open("opportunity_response.json", "w") as f:
+    #     f.write(json.dumps(response.json())) 
+    # print(response)
     # Convert the response to a Python dictionary 
     opportunity_items = response.json()['opportunity_items']
 

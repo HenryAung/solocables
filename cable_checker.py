@@ -78,8 +78,13 @@ def job_function_controller(job_from_api, database, column_name_to_match, oauth,
                 print("")
 
 
+        
+        elif job_display_choise == '5' : 
+            print("Exiting the application.")
+            break
+
         else:
-            print("Invalid choice. Please enter a number between 1 and 4.")
+            print("Invalid choice. Please enter a number between 1 and 5.")
 
 
 def job_function_display_options():
@@ -113,11 +118,6 @@ def main():
         
         if choice == '1':
             job_Id = input("Please enter the job Id: ")
-            # if job_Id.isdigit() : 
-            #     job_Id = int(job_Id)
-            # else:
-            #     print("Invalid input. Please enter the correct ID number of the job.")
-            #     continue
 
             job_from_api = apiCall.get_job_items(job_Id, oauth, headers)
 
