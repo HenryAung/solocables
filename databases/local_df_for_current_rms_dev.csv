@@ -1,4 +1,4 @@
-Id,Id_live,Name,Product Group,Description,mainsPowerReq,powerType,prefPwrCbl,isCable,cblLeng,connector1,connector2,prefPwrCbl_dev
+id_dev,id_live,name,product_group,description,mainsPowerReq,powerType,prefPwrCbl,isCable,cblLeng,connector1,connector2,prefPwrCbl_dev
 1089.0,1075.0,"16A to TRUE1 Female, 05m",Accessories,,,,,,,,,
 1099.0,921.0,2nd tier adapter for K&M 18950 Keyboard Stand,Accessories,2nd tier adapter for K&M 18950 Keyboard Stand,,,,,,,,
 1117.0,1007.0,"4k HDMI Splitter, 1 in 4 out",Accessories,,,,,,,,,
