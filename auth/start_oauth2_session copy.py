@@ -1,3 +1,4 @@
+
 import json
 from Scripts.auth import renew_api
 from requests_oauthlib import OAuth2Session
@@ -20,7 +21,70 @@ headers = {
     "x-subdomain": config.rms_subdomain
 }
 
-dir_path = os.path.dirname(os.path.realpath(__file__))
+# # Debugging: Print configuration values
+# print("Client ID:", client_id)
+# print("Client Secret:", client_secret)
+# print("Access Token URL:", access_token_url)
+# print("Redirect URI:", redirect_uri)
+# print("Authorization Base URL:", authorization_base_url)
+
+
+
+# # Function to save token to a file
+# def save_token(token, file_path):
+#     with open(file_path, "w") as f:
+#         json.dump(token, f)
+
+# # Function to load token from a file
+# def load_token(file_path):
+#     with open(file_path, "r") as f:
+#         return json.load(f)
+
+# # Construct the absolute path to access_token.json
+# dir_path = os.path.dirname(os.path.realpath(__file__))
+# token_path = os.path.join(dir_path, "access_token.json")
+
+# # Debugging: Print token path
+# print("Token Path:", token_path)
+
+# # Load or create OAuth2 session
+# def create_oauth2_session():
+#     try:
+#         token = load_token(token_path)
+#         # Debugging: Print loaded token
+#         print("Loaded Token:", token)
+#         oauth2_session = OAuth2Session(client_id, token=token)
+#     except FileNotFoundError:
+#         oauth2_session = OAuth2Session(client_id, redirect_uri=redirect_uri, token=token)
+#         authorization_url, state = oauth2_session.authorization_url(authorization_base_url)
+#         print("Please go to {} and authorize access.".format(authorization_url))
+#         authorization_response = input("Enter the full callback URL: ")
+#         token = oauth2_session.fetch_token(access_token_url, authorization_response=authorization_response, client_secret=client_secret)
+#         save_token(token, token_path)
+#     except json.JSONDecodeError:
+#         print("Error decoding the token file.")
+#         return None
+#     except Exception as e:
+#         print(f"An error occurred: {e}")
+#         return None
+#     return oauth2_session
+
+# # Create OAuth2 session
+# oauth2_session = create_oauth2_session()
+# print(oauth2_session)
+
+# if oauth2_session:
+#     # Example API request
+#     try:
+#         response = oauth2_session.get("https://heinlattaung7.current-rms.com/products", headers=headers)
+#         print(response.json())
+#     except TokenExpiredError:
+#         print("Token has expired. Please re-authenticate.")
+#     except Exception as e:
+#         print(f"An error occurred: {e}")
+# else:
+#     print("Failed to create OAuth2 session.")
+
 
 def start_oauth_session(client_id, client_secret,  redirect_uri, access_token_url, headers):
 
@@ -65,6 +129,8 @@ def start_oauth_session(client_id, client_secret,  redirect_uri, access_token_ur
         try:
             new_token = oauth.refresh_token(token_url=access_token_url, refresh_token=refresh_token, client_secret=client_secret)
             access_token = new_token['access_token']
+
+
 
         except requests.exceptions.HTTPError as e:
             print(f"Failed to refresh token, HTTP error: {e.response.status_code}")

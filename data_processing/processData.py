@@ -17,11 +17,10 @@ def read_product_file(file_path):
 
 def get_product_with_power_from_job(job_items, database, column_name): 
     # Select relevant columns
-    relevant_columns = ['Id', 'Name_x', 'quantity', 'Description_x', 'Product Group', 'mainsPowerReq', 'powerType', 'prefPwrCbl_dev', 'prefPwrCbl']
+    relevant_columns = ['Id', 'Name', 'quantity', 'description', 'mainsPowerReq', 'powerType', 'prefPwrCbl_dev', 'prefPwrCbl']
     matched_df = pd.merge(job_items, database, on=column_name, how='left')
     filtered_matched_df = matched_df[relevant_columns]
-    filtered_matched_df.rename(columns={'Name_x': 'Name', 'Description_x': 'Description'}, inplace=True)
-    
+
 
     # Filter for products requiring mains power
     products_with_power = filtered_matched_df[filtered_matched_df['mainsPowerReq'] == 'Yes']
@@ -31,25 +30,11 @@ def get_product_with_power_from_job(job_items, database, column_name):
 
 def get_all_cables(database): 
 
-    # cableGroup = ['Power Cable and Distribution - 13A', 
-    #           'Power Cable and Distribution - 16A', 
-    #           'Power Cable and Distribution - 32A', 
-    #           'Power Cable and Distribution - 63A',
-    #           'Power Cable and Distribution - Circuit Protection', 
-    #           'Power Cable and Distribution - Adapters', 
-    #           'Combi Cables', 
-    #           'Power Cable and Distribution - Power Distribution',
-    #           'Power Cable and Distribution - IEC C*',
-    #           'Power Cable and Distribution - Powercon',
-    #           'Power Cable and Distribution - Truecon'
-    #           ]
-
-    # # Filter out rows where 'product_group' is in cableGroup
-    # all_cables = database[database['Product Group'].isin(cableGroup)]
     all_cables = database[database['isCable'] == 'yes']
 
-    all_cables = all_cables[['Id', 'Name', 'Product Group', 'connector1', 'connector2', 'cblLeng']]
+    all_cables = all_cables[['Id', 'name', 'connector1', 'connector2', 'cblLeng']]
     all_cables['cblLeng'] = pd.to_numeric(all_cables['cblLeng'], errors='coerce')
+    all_cables['Id'] = pd.to_numeric(all_cables['Id'], errors='coerce')
 
     all_cables = database[database['isCable'] == 'yes']
   
@@ -79,18 +64,22 @@ def preffered_cable_counts(job_items, database,column_name ):
 
     # Filter for products requiring mains power
     products_with_power = get_product_with_power_from_job(job_items, database,column_name )
-  
+
      # Convert 'quantity' column to numeric (float or int)
     products_with_power['quantity'] = pd.to_numeric(products_with_power['quantity'], errors='coerce')
 
      # Calculate and print power type counts
     prefered_cable_counts = products_with_power.groupby('prefPwrCbl_dev')['quantity'].sum().reset_index()
-    
+
+    # Ensure both columns are of the same type (e.g., convert to string)
+    prefered_cable_counts['prefPwrCbl_dev'] = prefered_cable_counts['prefPwrCbl_dev'].astype(float)
+    cables['Id'] = cables['Id'].astype(float)
+ 
     # Merge prefered_cable_counts with cables on 'prefPwrCbl' and 'name' respectively
     prefered_cable = pd.merge(prefered_cable_counts, cables, left_on='prefPwrCbl_dev', right_on='Id', how='left')
-    
+
       # Select desired columns and rename 'quantity_x' to 'quantity'
-    prefferred_cable = prefered_cable[['Id', 'Name', 'connector1', 'connector2', 'cblLeng', 'quantity' ]].sort_values('cblLeng', ascending=False)
+    prefferred_cable = prefered_cable[['Id', 'name', 'connector1', 'connector2', 'cblLeng', 'quantity' ]].sort_values('cblLeng', ascending=False)
     print("\nTotal Minimum Preffered Cables:")
     print(prefferred_cable)
 
@@ -118,11 +107,13 @@ def suggestions_for_cables(compare_merged):# Suggest cables to add or remove
     
     #listing out all extra cables in job
     job_cables_to_sub = compare_merged[compare_merged['comparison'] == 'More'].sort_values('cblLeng_prefferred', ascending=False)
+    # print(job_cables_to_sub)
     job_cables_to_sub = job_cables_to_sub.drop(['connector1_prefferred', 'connector2_prefferred', 'quantity_prefferred', 'cblLeng_prefferred'], axis=1)
+
 
     print("Extra Cables in job before substituting:")
     for index, row in job_cables_to_sub.iterrows():
-        print(f"{int(row['difference'])} x {row['Name_job']}")
+        print(f"{int(row['difference'])} x {row['Name']}")
     print("  ")
     print("  ")
 
@@ -137,7 +128,7 @@ def suggestions_for_cables(compare_merged):# Suggest cables to add or remove
     print ("  ")
     print("Preffered cables not match with extra cable before substituting  :")
     for index, row in needed_preffered_cables.iterrows():
-        print(f"     {int(row['difference'])} x {row['Name_prefferred']}")
+        print(f"     {int(row['difference'])} x {row['Name']}")
     print("  ")
     print("  ")
         
@@ -159,13 +150,13 @@ def suggestions_for_cables(compare_merged):# Suggest cables to add or remove
                 if j_difference >= p_difference:
                     job_cables_to_sub.at[j_index, 'difference'] -= p_difference
                     needed_preffered_cables.at[p_index, 'difference'] = 0
-                    subtracted_items.append((p_row['Name_prefferred'], j_row['Name_job'], p_difference))
+                    subtracted_items.append((p_row['Name'], j_row['Name'], p_difference))
                     total_subtracted += p_difference
                     break
                 else:
                     needed_preffered_cables.at[p_index, 'difference'] -= j_difference
                     job_cables_to_sub.at[j_index, 'difference'] = 0
-                    subtracted_items.append((p_row['Name_prefferred'], j_row['Name_job'], j_difference))
+                    subtracted_items.append((p_row['Name'], j_row['Name'], j_difference))
                     total_subtracted += p_difference
                     p_difference -= j_difference
 
@@ -188,6 +179,7 @@ def check_cables(job_items, database, column_name):
     preffered_cable = preffered_cable_counts(job_items, database,column_name )
 
     compared_merged_cables = compare_cables(cables_from_job, preffered_cable)
+    # print(compared_merged_cables)
 
     if 'Less' in compared_merged_cables['comparison'].values:
         remaining_job_items, remaining_preferred_items, subtracted_items = suggestions_for_cables(compared_merged_cables)
@@ -206,7 +198,7 @@ def check_cables(job_items, database, column_name):
         if remaining_job_items is not None:
             print("\nDetails of extra cables after substituting:") 
             for index, row in remaining_job_items.iterrows():
-                print(f"{int(row['difference'])} x {row['Name_job']}")
+                print(f"{int(row['difference'])} x {row['Name']}")
             print ("  ")
    
             
@@ -214,7 +206,7 @@ def check_cables(job_items, database, column_name):
                 print("\nDetails of needed preffered cables after substituting:") 
                 for index, row in remaining_preferred_items.iterrows():
                    
-                    print(f"{row['difference']} x {row['Name_prefferred']} is needed to be added to the job.")
+                    print(f"{row['difference']} x {row['Name']} is needed to be added to the job.")
                 print(" These cables are needed to be added to the job.")
                 print ("  ")
             
